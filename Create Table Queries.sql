@@ -18,8 +18,7 @@ CREATE TABLE Articles(
 	post_date DATETIME NOT NULL,
 	author VARCHAR(20) NOT NULL,
 	content TEXT NOT NULL,
-	PRIMARY KEY (articleID),
-	FOREIGN KEY (author) REFERENCES Users(userID)
+	PRIMARY KEY (articleID)
 );
 
 CREATE TABLE Pets(
@@ -42,8 +41,7 @@ CREATE TABLE PetPages(
 	info TEXT,
 	breed_name VARCHAR(40),
 	petID INT NOT NULL,
-	PRIMARY KEY(petID),
-	FOREIGN KEY(petID) REFERENCES Pets(petID)
+	PRIMARY KEY(petID)
 );
 
 CREATE TABLE Profiles(
@@ -52,16 +50,13 @@ CREATE TABLE Profiles(
 	bio TEXT,
 	visible_email BINARY(1),
 	userID INT NOT NULL,
-	PRIMARY KEY(userID),
-	FOREIGN KEY(userID) REFERENCES Users(userID)
+	PRIMARY KEY(userID)
 );
 
 CREATE TABLE Owners(
 	userID INT NOT NULL,
 	petID INT NOT NULL,
-	PRIMARY KEY(userID, petID),
-	FOREIGN KEY(userID) REFERENCES Users(userID),
-	FOREIGN KEY(petID) REFERENCES Pets(petID)
+	PRIMARY KEY(userID, petID)
 );
 
 
@@ -81,7 +76,7 @@ BEGIN
 	WHERE username = inUsername
 	AND hashed_password  = saltedHash(inUsername, inPassword)
 	LIMIT 1
-	INTO UserID
+	INTO UserID;
 
 	IF UserID IS NULL THEN
 		SET result = 'Invalid credentials';
@@ -90,6 +85,167 @@ BEGIN
 			INTO Articles(article_name, verify_status, post_date, content, author)
 			VALUES (inArticleName, NO, NOW(), inContent, inUsername);
 			SET result = 'Post created!';
+	END IF;
+
+	SELECT result;
+END
+
+--Add foreign keys to the tables--
+ALTER TABLE Articles
+    ADD CONSTRAINT author_user_fk
+	FOREIGN KEY (author) REFERENCES Users(username);
+
+ALTER TABLE PetPages
+    ADD CONSTRAINT pet_petPage_fk
+	FOREIGN KEY(petID) REFERENCES Pets(petID);
+
+ALTER TABLE Profiles
+    ADD CONSTRAINT user_profile_fk
+	FOREIGN KEY(userID) REFERENCES Users(userID);
+
+ALTER TABLE Owners
+    ADD CONSTRAINT owner_valid_fk
+	FOREIGN KEY(userID) REFERENCES Users(userID);
+ALTER TABLE Owners
+    ADD CONSTRAINT pet_valid_fk
+	FOREIGN KEY(petID) REFERENCES Pets(petID);
+
+--Procedure to create a profile page
+CREATE PROCEDURE createProfile(IN inUsername VARCHAR(20), IN inPassword VARCHAR(20), IN inName VARCHAR(30), IN inLocation VARCHAR(40), IN inBio TEXT, IN inVisibleEmail BINARY(1))
+BEGIN
+	DECLARE UserID INT;
+	DECLARE result VARCHAR(225);
+
+	SELECT userID
+	FROM Users
+	WHERE username = inUsername
+	AND hashed_password  = saltedHash(inUsername, inPassword)
+	LIMIT 1
+	INTO UserID;
+
+	IF UserID IS NULL THEN
+		SET result = 'Invalid credentials';
+	ELSE
+		INSERT
+			INTO Profiles(name, location, bio, visible_email, userID)
+			VALUES (inName, inLocation, inBio, inVisibleEmail, UserID);
+			SET result = 'Profile Created!';
+	END IF;
+
+	SELECT result;
+END
+
+--Procedure to create a pet
+CREATE PROCEDURE createPet(IN inUsername VARCHAR(20), IN inPassword VARCHAR(20), IN inPetName VARCHAR(30), IN inPicture BLOB, IN inInfo TEXT, IN inBreedName VARCHAR(40), IN inRehome BINARY(1))
+BEGIN
+	DECLARE UserID INT;
+	DECLARE PetID INT;
+	DECLARE result VARCHAR(225);
+
+	SELECT userID
+	FROM Users
+	WHERE username = inUsername
+	AND hashed_password  = saltedHash(inUsername, inPassword)
+	LIMIT 1
+	INTO UserID;
+
+	IF UserID IS NULL THEN
+		SET result = 'Invalid credentials';
+	ELSE
+		INSERT
+			INTO Pets(rehome)
+			VALUES (inRehome);
+			
+		SELECT LAST_INSERT_ID()
+		INTO PetID;
+			
+		INSERT
+			INTO Owners(userID, petID)
+			VALUES (UserID, PetID);
+	
+		INSERT
+			INTO PetPages(pet_name, picture, info, breed_name, petID)
+			VALUES (inPetName, inPicture, inInfo, inBreedName, PetID);
+			SET result = 'Pet Created!';
+	END IF;
+	SELECT result;
+END
+
+--Procedure to update a profile page
+CREATE PROCEDURE updateProfile(IN inUsername VARCHAR(20), IN inPassword VARCHAR(20), IN inName VARCHAR(30), IN inLocation VARCHAR(40), IN inBio TEXT, IN inVisibleEmail BINARY(1))
+BEGIN
+	DECLARE UserID INT;
+	DECLARE result VARCHAR(225);
+
+	SELECT userID
+	FROM Users
+	WHERE username = inUsername
+	AND hashed_password  = saltedHash(inUsername, inPassword)
+	LIMIT 1
+	INTO UserID;
+
+	IF UserID IS NULL THEN
+		SET result = 'Invalid credentials';
+	ELSE
+		UPDATE Profiles
+			SET name = inName, location = inLocation, bio = inBio, visible_email = inVisibleEmail
+			WHERE userID = UserID;
+			SET result = 'Profile Updated!';
+	END IF;
+
+	SELECT result;
+END
+
+--Procedure to update a pet
+CREATE PROCEDURE updatePet(IN inUsername VARCHAR(20), IN inPassword VARCHAR(20), IN inPetName VARCHAR(30), IN inPicture BLOB, IN inInfo TEXT, IN inBreedName VARCHAR(40), IN inRehome BINARY(1), IN inPetID)
+BEGIN
+	DECLARE UserID INT;
+	DECLARE result VARCHAR(225);
+
+	SELECT userID
+	FROM Users
+	WHERE username = inUsername
+	AND hashed_password  = saltedHash(inUsername, inPassword)
+	LIMIT 1
+	INTO UserID;
+
+	IF UserID IS NULL THEN
+		SET result = 'Invalid credentials';
+	ELSE
+		UPDATE Pets
+			SET rehome = inRehome
+			WHERE petID = inPetID;
+	
+		UPDATE PetPages
+			SET pet_name = inPetName, picture = inPicture, info = inInfo, breed_name = inBreedName
+			WHERE inPetID;
+		SET result = 'Pet Updated!';
+	END IF;
+	
+	SELECT result;
+END
+
+--Procedure to verify an Article
+CREATE PROCEDURE updateProfile(IN inUsername VARCHAR(20), IN inPassword VARCHAR(20), IN inVerify BINARY(1), IN inArticleID)
+BEGIN
+	DECLARE UserID INT;
+	DECLARE result VARCHAR(225);
+
+	SELECT userID
+	FROM Users
+	WHERE username = inUsername
+	AND hashed_password  = saltedHash(inUsername, inPassword)
+	AND title = 'ADMIN'
+	LIMIT 1
+	INTO UserID;
+
+	IF UserID IS NULL THEN
+		SET result = 'Invalid credentials';
+	ELSE
+		UPDATE Articles
+			SET verified = inVerify
+			WHERE articleID = inArticleID;
+			SET result = 'Article Verified!';
 	END IF;
 
 	SELECT result;
