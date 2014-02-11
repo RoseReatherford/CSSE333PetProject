@@ -6,7 +6,7 @@ CREATE TABLE Users(
 	email VARCHAR(50) NOT NULL,
 	title VARCHAR(10),
 	verified BINARY(1) NOT NULL,
-	PRIMARY KEY (usedID),
+	PRIMARY KEY (userID),
 	UNIQUE KEY username (username),
 	UNIQUE KEY hashed_password (hashed_password)
 );
@@ -197,7 +197,7 @@ BEGIN
 END
 
 --Procedure to update a pet
-CREATE PROCEDURE updatePet(IN inUsername VARCHAR(20), IN inPassword VARCHAR(20), IN inPetName VARCHAR(30), IN inPicture BLOB, IN inInfo TEXT, IN inBreedName VARCHAR(40), IN inRehome BINARY(1), IN inPetID)
+CREATE PROCEDURE updatePet(IN inUsername VARCHAR(20), IN inPassword VARCHAR(20), IN inPetName VARCHAR(30), IN inPicture BLOB, IN inInfo TEXT, IN inBreedName VARCHAR(40), IN inRehome BINARY(1), IN inPetID INT)
 BEGIN
 	DECLARE UserID INT;
 	DECLARE result VARCHAR(225);
@@ -226,7 +226,7 @@ BEGIN
 END
 
 --Procedure to verify an Article
-CREATE PROCEDURE updateProfile(IN inUsername VARCHAR(20), IN inPassword VARCHAR(20), IN inVerify BINARY(1), IN inArticleID)
+CREATE PROCEDURE verifyArticle(IN inUsername VARCHAR(20), IN inPassword VARCHAR(20), IN inVerify BINARY(1), IN inArticleID INT)
 BEGIN
 	DECLARE UserID INT;
 	DECLARE result VARCHAR(225);
